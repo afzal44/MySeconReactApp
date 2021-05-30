@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: EC2 Key Pair for SSH Access
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: "[-_ a-zA-Z0-9]*"
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: m5.large
+    ConstraintDescription: must be a valid EC2 instance type.
+  ImageID:
+    Type: 'AWS::EC2::Image::Id'
+    Description: ImageId for VDA server
+    Default: ami-0debf1d5c6ecf21b8
+Resources:
+  MyInstance:
+    Type: AWS::EC2::Instance
+    DependsOn: InstanceSecurityGroup
+    Properties:
+      KeyName: !Ref KeyName
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref ImageID
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+      SubnetId: subnet-854865e1
+      IamInstanceProfile: !Ref InstanceProfile
+      Tags:
+      - Key: Name
+        Value: CFTTRAINingInstance
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: SampleEC2Group
+      GroupName: SampleEC2Group
+      SecurityGroupIngress: 
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      VpcId: vpc-e1401185
+  AccessRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: ec2.amazonaws.com
+          Action: 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+      - 'arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy'
+      - 'arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore'
+  InstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    DependsOn: AccessRole
+    Properties:
+      InstanceProfileName: trainingInstanceProfile
+      Path: /
+      Roles:
+      - !Ref AccessRole
+
+# Outputs:
+#   InstanceId:
+#     Description: Instance id of newly created instance
